@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AdversarialShield</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="logo">AdversaShield</div>
+    <div class="nav-links">
+      <a href="#">About</a>
+      <a href="#">FAQ</a>
+      <a href="#">Privacy</a>
+      <a href="#" style="background: orange; padding: 8px 15px; border-radius: 20px;">Download</a>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="upload-box" id="dropzone">
+      <p>Click to browse or drag files<br>here to start sharing</p>
+    </div>
+
+    <div class="info-section">
+      <h1>Classify images directly from<br>your device to anywhere</h1>
+      <p>Add images of any size directly from your device without ever storing anything online.</p>
+      <div class="features">
+        <div>∞ <span>No image limit</span></div>
+        <div>🔁 <span>Peer-to-peer</span></div>
+        <div>⚡ <span>Blazingly fast</span></div>
+        <div>🔐 <span>End-to-end encrypted</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow" onclick="scrollToNext()">⬇</div>
+
+  <!-- Just for demo scroll target -->
+  <div id="below" style="height: 100vh;"></div>
+
+  <div id="resultModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <div id="resultText"></div>
+    </div>
+  </div>
+  
+
+  <script src="script.js"></script>
+</body>
+</html>
