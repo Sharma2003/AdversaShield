@@ -5,13 +5,15 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 import io
+from art.estimators.classification import TensorFlowV2Classifier
+from art.attacks.evasion import FastGradientMethod
 
-app = FastAPI()
+app = FastAPI() 
 
 # Enable CORS for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or restrict to ["http://127.0.0.1:5500"]
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,6 +45,51 @@ async def predict(file: UploadFile = File(...)):
         return JSONResponse(content={
             "predicted_class": predicted_class,
             "confidence": confidence
+        })
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+    
+
+classifier = TensorFlowV2Classifier(
+    model=model,
+    nb_classes=10,
+    input_shape=(32, 32, 3),
+    loss_object=tf.keras.losses.CategoricalCrossentropy(),
+    clip_values=(0, 1)
+)
+
+from io import BytesIO
+import base64
+
+@app.post("/attack")
+async def attack(file: UploadFile = File(...)):
+    try:
+        # Read uploaded image
+        contents = await file.read()
+        image = preprocess_image(contents)
+
+        # FGSM attack
+        fgsm = FastGradientMethod(estimator=classifier, eps=0.1)
+        adversarial = fgsm.generate(x=image)
+
+        # Predict on adversarial image
+        adv_prediction = model.predict(adversarial)
+        predicted_class = class_names[np.argmax(adv_prediction)]
+        confidence = float(np.max(adv_prediction))
+
+        # Convert adversarial image to base64
+        adversarial_image = (adversarial[0] * 255).astype(np.uint8)
+        img_pil = Image.fromarray(adversarial_image)
+        buffer = BytesIO()
+        img_pil.save(buffer, format="PNG")
+        base64_img = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+        return JSONResponse(content={
+            "message": "FGSM Attack Successful",
+            "predicted_class": predicted_class,
+            "confidence": confidence,
+            "attacked_image": base64_img
         })
 
     except Exception as e:

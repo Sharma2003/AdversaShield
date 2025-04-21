@@ -35,7 +35,7 @@ dropzone.addEventListener('click', () => {
     modal.style.zIndex = '9999';
     modal.style.overflow = 'hidden';
 
-    // Left side: Image preview
+    // Create image container
     const imgContainer = document.createElement('div');
     imgContainer.style.flex = '1';
     imgContainer.style.padding = '20px';
@@ -49,29 +49,58 @@ dropzone.addEventListener('click', () => {
     img.style.borderRadius = '10px';
     imgContainer.appendChild(img);
 
-    // Right side: Prediction and actions
+    // Create info container
     const infoContainer = document.createElement('div');
     infoContainer.style.flex = '1';
     infoContainer.style.padding = '30px';
     infoContainer.innerHTML = `
-      <h2 style="margin-bottom: 20px;">The image is successfully classified as <span style="color: #00ffaa">${data.predicted_class}</span></h2>
+      <h2 style="margin-bottom: 20px;">✅ The image is successfully classified as <span style="color: #00ffaa">${data.predicted_class}</span></h2>
       <p style="font-size: 18px; margin-bottom: 20px;">Confidence: ${(data.confidence * 100).toFixed(2)}%</p>
     `;
 
-    // Classify another image button
-    const reuploadBtn = document.createElement('button');
-    reuploadBtn.textContent = "🔁 Classify another image";
-    reuploadBtn.style.marginRight = '10px';
-    reuploadBtn.style.padding = '10px 15px';
-    reuploadBtn.style.border = 'none';
-    reuploadBtn.style.borderRadius = '8px';
-    reuploadBtn.style.background = '#007bff';
-    reuploadBtn.style.color = 'white';
-    reuploadBtn.style.cursor = 'pointer';
-    reuploadBtn.onclick = () => {
-      modal.remove();
-      dropzone.click();
+    // Continue button (FGSM attack)
+    const continueBtn = document.createElement('button');
+    continueBtn.textContent = "⚠️ Continue";
+    continueBtn.style.marginRight = '10px';
+    continueBtn.style.padding = '10px 15px';
+    continueBtn.style.border = 'none';
+    continueBtn.style.borderRadius = '8px';
+    continueBtn.style.background = '#ffaa00';
+    continueBtn.style.color = '#000';
+    continueBtn.style.cursor = 'pointer';
+    continueBtn.onclick = async () => {
+      infoContainer.innerHTML = `<h2 style="color: orange;">Applying FGSM attack...</h2>`;
+    
+      const attackForm = new FormData();
+      attackForm.append('file', file); // "file" comes from earlier uploaded image
+    
+      const attackResponse = await fetch('http://127.0.0.1:8000/attack', {
+        method: 'POST',
+        body: attackForm
+      });
+    
+      const attackData = await attackResponse.json();
+    
+
+
+      const attackedImg = document.createElement('img');
+      attackedImg.src = `data:image/png;base64,${attackData.attacked_image}`;
+      attackedImg.style.maxWidth = '100%';
+      attackedImg.style.maxHeight = '100%';
+      attackedImg.style.borderRadius = '10px';
+    
+      imgContainer.innerHTML = ''; 
+      imgContainer.appendChild(img); 
+      
+      infoContainer.innerHTML = `
+        <h2 style="color: red;">🚨 After FGSM Attack</h2>
+        <p style="font-size: 20px; margin: 10px 0;">The model now misclassified this image as:</p>
+        <p style="font-size: 24px;"><strong style="color: #ff5555;">${attackData.predicted_class}</strong></p>
+        <p style="font-size: 18px;">Confidence: ${(attackData.confidence * 100).toFixed(2)}%</p>
+        <p style="color: green; font-size: 16px; font-weight: bold;">✅ ${attackData.message}</p>
+      `;
     };
+    
 
     // Close button
     const closeBtn = document.createElement('button');
@@ -91,15 +120,12 @@ dropzone.addEventListener('click', () => {
     };
     closeBtn.onclick = () => modal.remove();
 
-    // Add buttons to info section
-    infoContainer.appendChild(reuploadBtn);
+    infoContainer.appendChild(continueBtn);
     infoContainer.appendChild(closeBtn);
 
-    // Append both sides to modal
     modal.appendChild(imgContainer);
     modal.appendChild(infoContainer);
 
-    // Append modal to body
     document.body.appendChild(modal);
   };
 
