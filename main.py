@@ -94,3 +94,29 @@ async def attack(file: UploadFile = File(...)):
 
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.post("/defense")
+async def hybrid_defense(file: UploadFile = File(...)):
+    try:
+        # Load the hybrid defense model
+        defense_model = tf.keras.models.load_model("Defended.h5")
+
+        # Read & preprocess uploaded image
+        contents = await file.read()
+        image = preprocess_image(contents)
+
+        # Predict
+        prediction = defense_model.predict(image)
+        predicted_class = class_names[np.argmax(prediction)]
+        confidence = float(np.max(prediction))
+
+        return JSONResponse(content={
+            "message": "Hybrid Defense Applied Successfully ✅",
+            "predicted_class": predicted_class,
+            "confidence": confidence
+        })
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
