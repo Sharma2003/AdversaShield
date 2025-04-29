@@ -1,3 +1,24 @@
+// Global tracker for current image
+let currentImageFile = null;
+
+// Show animated loader + message
+function showLoader(container, message) {
+  container.innerHTML = `
+    <div class="loader"></div>
+    <h2 style="color: orange; text-align: center;">${message}</h2>
+  `;
+}
+
+// Bounce effect for "Defense Activated" heading
+function triggerShieldBounce(infoContainer) {
+  const shieldTitle = infoContainer.querySelector(".shield-title");
+  if (shieldTitle) {
+    shieldTitle.classList.remove("bounce");
+    void shieldTitle.offsetWidth;
+    shieldTitle.classList.add("bounce");
+  }
+}
+
 const dropzone = document.getElementById('dropzone');
 
 dropzone.addEventListener('click', () => {
@@ -8,6 +29,7 @@ dropzone.addEventListener('click', () => {
   input.onchange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    currentImageFile = file; // ✅ Track original image
 
     const formData = new FormData();
     formData.append('file', file);
@@ -19,7 +41,7 @@ dropzone.addEventListener('click', () => {
 
     const data = await response.json();
 
-    // Create modal
+    // Modal setup
     const modal = document.createElement('div');
     modal.style.position = 'fixed';
     modal.style.top = '50%';
@@ -35,13 +57,13 @@ dropzone.addEventListener('click', () => {
     modal.style.zIndex = '9999';
     modal.style.overflow = 'hidden';
 
-    // Create image container
     const imgContainer = document.createElement('div');
     imgContainer.style.flex = '1';
     imgContainer.style.padding = '20px';
     imgContainer.style.display = 'flex';
     imgContainer.style.alignItems = 'center';
     imgContainer.style.justifyContent = 'center';
+
     const img = document.createElement('img');
     img.src = URL.createObjectURL(file);
     img.style.maxWidth = '100%';
@@ -49,7 +71,6 @@ dropzone.addEventListener('click', () => {
     img.style.borderRadius = '10px';
     imgContainer.appendChild(img);
 
-    // Create info container
     const infoContainer = document.createElement('div');
     infoContainer.style.flex = '1';
     infoContainer.style.padding = '30px';
@@ -58,7 +79,6 @@ dropzone.addEventListener('click', () => {
       <p style="font-size: 18px; margin-bottom: 20px;">Confidence: ${(data.confidence * 100).toFixed(2)}%</p>
     `;
 
-    // FGSM Continue Button
     const continueBtn = document.createElement('button');
     continueBtn.textContent = "⚠️ Continue";
     continueBtn.style.marginRight = '10px';
@@ -68,18 +88,20 @@ dropzone.addEventListener('click', () => {
     continueBtn.style.background = '#ffaa00';
     continueBtn.style.color = '#000';
     continueBtn.style.cursor = 'pointer';
+
     continueBtn.onclick = async () => {
-      infoContainer.innerHTML = `<h2 style="color: orange;">Applying FGSM attack...</h2>`;
+      showLoader(infoContainer, "Applying FGSM attack...");
       imgContainer.innerHTML = '';
 
       const attackForm = new FormData();
-      attackForm.append('file', file);
+      attackForm.append('file', currentImageFile);
 
       const attackResponse = await fetch('http://localhost:8000/attack', {
         method: 'POST',
         body: attackForm
       });
 
+      // await new Promise(resolve => setTimeout(resolve, 15000)); // simulate loading
       const attackData = await attackResponse.json();
 
       const attackedImg = document.createElement('img');
@@ -97,7 +119,7 @@ dropzone.addEventListener('click', () => {
         <p style="color: green; font-size: 16px; font-weight: bold;">✅ ${attackData.message}</p>
       `;
 
-      // Re-Check Button (reupload + attack)
+      // Re-check button
       const recheckBtn = document.createElement('button');
       recheckBtn.textContent = "🔁 Re-Check";
       recheckBtn.style.marginTop = '20px';
@@ -118,7 +140,8 @@ dropzone.addEventListener('click', () => {
           const newFile = event.target.files[0];
           if (!newFile) return;
 
-          infoContainer.innerHTML = `<h2 style="color: orange;">Applying FGSM attack...</h2>`;
+          currentImageFile = newFile;
+          showLoader(infoContainer, "Applying FGSM attack...");
           imgContainer.innerHTML = '';
 
           const newForm = new FormData();
@@ -129,14 +152,15 @@ dropzone.addEventListener('click', () => {
             body: newForm
           });
 
+          // await new Promise(resolve => setTimeout(resolve, 15000));
           const newData = await newResponse.json();
 
           const newImg = document.createElement('img');
-          newImg.src = `data:image/png;base64,${newData.attacked_image}`;
+          newImg.src = URL.createObjectURL(newFile);
           newImg.style.maxWidth = '100%';
           newImg.style.maxHeight = '100%';
           newImg.style.borderRadius = '10px';
-          imgContainer.appendChild(img);
+          imgContainer.appendChild(newImg);
 
           infoContainer.innerHTML = `
             <h2 style="color: red;">🚨 After FGSM Attack</h2>
@@ -165,30 +189,36 @@ dropzone.addEventListener('click', () => {
       defendBtn.style.cursor = 'pointer';
 
       defendBtn.onclick = async () => {
-        infoContainer.innerHTML = `<h2 style="color: orange;">Applying Defense...</h2>`;
-        
-        // imgContainer.appendChild(img);
+        showLoader(infoContainer, "Activating Hybrid Defense...");
+        imgContainer.innerHTML = '';
+
         const defendForm = new FormData();
-        defendForm.append('file', file);
+        defendForm.append('file', currentImageFile);
 
         const defendResponse = await fetch('http://localhost:8000/defense', {
           method: 'POST',
           body: defendForm
         });
 
+        await new Promise(resolve => setTimeout(resolve, 15000));
         const defendData = await defendResponse.json();
 
-        imgContainer.appendChild(img);
+        const defendedImg = document.createElement('img');
+        defendedImg.src = URL.createObjectURL(currentImageFile);
+        defendedImg.style.maxWidth = '100%';
+        defendedImg.style.maxHeight = '100%';
+        defendedImg.style.borderRadius = '10px';
+        imgContainer.appendChild(defendedImg);
 
         infoContainer.innerHTML = `
-          <h2 style="color: #00ffaa;">🛡️ Defense Activated</h2>
+          <h2 class="shield-title" style="color: #00ffaa;">🛡️ Defense Activated</h2>
           <p style="font-size: 20px;">Prediction after applying defense:</p>
           <p style="font-size: 24px;"><strong style="color: #00ffaa;">${defendData.predicted_class}</strong></p>
           <p style="font-size: 18px;">Confidence: ${(defendData.confidence * 100).toFixed(2)}%</p>
           <p style="color: lightgreen; font-size: 16px; font-weight: bold;">✅ ${defendData.message}</p>
         `;
 
-        // infoContainer.appendChild(recheckBtn);
+        triggerShieldBounce(infoContainer);
         infoContainer.appendChild(defendBtn);
       };
 
@@ -196,8 +226,6 @@ dropzone.addEventListener('click', () => {
       infoContainer.appendChild(defendBtn);
     };
 
-
-    // Close Button for classification modal only
     const closeBtn = document.createElement('button');
     closeBtn.textContent = "❌ Close";
     closeBtn.style.padding = '10px 15px';
@@ -222,7 +250,7 @@ dropzone.addEventListener('click', () => {
   input.click();
 });
 
-// Scroll on arrow click
+// Smooth scroll button
 function scrollToNext() {
   document.getElementById("below").scrollIntoView({ behavior: "smooth" });
 }
